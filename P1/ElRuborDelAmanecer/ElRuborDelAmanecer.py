@@ -73,38 +73,32 @@ def getX2(x1,y1,y2,m):
 #####INPUTS#####
 pts = []
 
-with open('2.in','r') as file:
-    casos = 0
+with open('1.in','r') as file:
     for l in file:
         x, y = l.split(" ")
         pts.append(Punto(int(x),int(y)))
-        casos += 1
 
+casos = len(pts)
 #####SORT LIST#####
 pts.sort(key=lambda punto:punto.x)
 
 #####DRAW LINES#####
-for i in range(int(casos)-1):
-  graficarLinea(pts[i],pts[i+1],0)
+for i in range(casos-1): graficarLinea(pts[i],pts[i+1],0)
 
 #####DRAW HIGHER POINTS#####
-for i in range(1,int(casos)-1, 2):
-  graficarPunto(pts[i])
+for i in range(1,casos-1, 2): graficarPunto(pts[i])
 
 #####DRAW SUNNY LINES#####
 revPts = pts[::-1]
 
 graficarLinea(revPts[0], revPts[1], 1)
-maxDist = Punto.distancia(pts[0], pts[1])
 m = pendiente(revPts[1].x, revPts[0].x, revPts[1].y, revPts[0].y)
 ptAlto = Punto(revPts[1].x, revPts[1].y)
-distanciaSoleado=(sqrt((revPts[1].x - revPts[0].x)**2+(revPts[1].y - revPts[0].y)**2))
 
-for i in range(2,int(casos)-2):
+for i in range(1,casos-1):
   if revPts[i].y > ptAlto.y:
     m = pendiente(revPts[i-1].x, revPts[i].x,revPts[i-1].y,revPts[i].y)
     newPt = Punto(getX2(revPts[i].x, revPts[i].y, ptAlto.y, m), ptAlto.y)
-    distanciaSoleado=(sqrt((revPts[i].x-newPt.x)**2+(revPts[i].y-ptAlto.y)**2))
     graficarLinea(newPt, revPts[i], 1)
     ptAlto= Punto(revPts[i].x, revPts[i].y)
 
