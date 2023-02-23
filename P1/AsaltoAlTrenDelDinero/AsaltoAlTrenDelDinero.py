@@ -1,56 +1,64 @@
-import sympy as sym
-import numpy as np
-from collections import deque
-import math
+from dataclasses import dataclass
+from math import sqrt
 import matplotlib.pyplot as plt
-eps= 1e-4
 
+@dataclass
 class Punto:
     def __init__(self, *args):
         self.x, self.y = args[0], args[1]
         self.coord= args
-    def __str__(self):
-        s = "Punto("+str(self.x)+","+str(self.y)+")"
-        return s
     def __repr__(self):
         s = "Punto("+str(self.x)+","+str(self.y)+")"
         return s
-    def __eq__(self, other):
-        if len(self.coord)!= len(other.coord):
-            raise ArithmeticError
-        return all( [abs(x1-x2)<eps for x1,x2 in zip(self.coord, other.coord)] )
-    def rotar(self, grados):
-        g = np.deg2rad(grados)
-        R = np.array([[np.cos(g), -np.sin(g)],[np.sin(g),np.cos(g)]])
-        P = np.array([[self.x],[self.y]])
-        RP = np.dot(R,P)
-        return Punto(RP[0],RP[1])
-    def dist(self, other):
-        d = np.sqrt((pow((other.y-self.y),2))+(pow((other.x-self.x),2)))
-        return d
-    # Ordena puntos en ángulo (círculo) Regresa ángulo hacia el orígen
-    def angulo(self):
-        return math.atan2(-self.y,-self.x)
-    def anguloOrigenDif(self, orig):
-        return math.atan2(-(self.x+orig.x),self.y+orig.y)
-    def vector(self, a, b):
-        return (Punto(b.x-a.x,b.y-a.y))
+    def distancia(p1, p2):
+            x = p1.x - p2.x
+            y = p1.y - p2.y
+            d = sqrt(x ** 2 + y ** 2)
+            return d
 
+@dataclass
+class Linea:
+    A: float
+    B: float
+    C: float
+    p1: Punto
+    p2: Punto
+    tipo: str
 
-def getM(x1,y1,x2,y2):
-    return (y2 -y1) / (x2 -x1)
+    def __init__(self, p1, p2):
+        mx = p2.x - p1.x
+        if mx == 0:
+          self.A = -1
+          self.B = 0
+          self.C = p1.x
+        else:
+          m = (p2.y - p1.y) / mx
+          self.A = m
+          self.B = -1
+          self.C = m*(-p2.x) + p2.y
+        self.p1 = p1
+        self.p2 = p2
 
-def getC(p, q, m):
-  return (q + (1 / m)*p)
-  
-def getB(x, y, m):
-  return y - m*x
+    def __repr__(self):
+        return f"A:{self.A}, B:{self.B}, C:{self.C}, tipo:{self.tipo}"
 
+#####FUNCTIONS#####
+def getIntersectedPoint(p, l):
+  x1 = l.p1.x
+  y1 = l.p1.y
+  x2 = l.p2.x
+  y2 = l.p2.y
+  x3 = p.x
+  y3 = p.y
+  dx, dy = x2-x1, y2-y1
+  det = dx*dx + dy*dy
+  a = (dy*(y3-y1)+dx*(x3-x1))/det
+  return(Punto(x1+a*dx, y1+a*dy))
 
-def getDistance(x1, y1, x2, y2):
-  return ((x1 - x2)**2 + (y1 - y2)**2)**0.5
+def distanciaSegmentoPunto(p: Punto, l: Linea):
+    return abs((l.A*p.x + l.B*p.y + l.C) / sqrt(l.A ** 2 + l.B ** 2))
 
-
+#####GRAPHICS#####
 def acepta_listas(f):
   def inner(parametro, *args, **kwargs):
     if type(parametro) == list:
@@ -70,97 +78,57 @@ def graficarLinea(p1,p2,isTrail):
   if(isTrail):
     plt.plot([p1.x,p2.x],[p1.y,p2.y], color='olive')
   else:
-    plt.plot([p1.x,p2.x],[p1.y,p2.y], color='pink')
+    plt.plot([p1.x,p2.x],[p1.y,p2.y], color='lightseagreen')
 
-# p1 = Punto(1, 4)
-# p2 = Punto(3, 5)
-# p3 = Punto(4, 7)
-# p4 = Punto(6, 4)
-# p5 = Punto(9, 3)
-
-# base = Punto(3, 2)
-
-# numPuntos = 5
-# puntos = [p1, p2, p3, p4, p5]
-
+#####INPUTS#####
 puntos = []
+vias = []
 
 with open("1.in", 'r') as f:
     for i, l in enumerate(f):
         if i == 1:
-            x = l.split(" ")
+            x = float(l)
         elif i == 2:
-            base = Punto(x,l)
+            base = Punto(x,float(l))
         elif i == 4:
-            numPuntos = l.split(" ")
+            numPuntos = float(l)
         elif i > 5:
             if i % 2 == 0:
-                x = l.split(" ")
+                x = float(l)
             else:
-                puntos.append(Punto(x, l.split(" ")))
+                puntos.append(Punto(x, float(l)))
 
-distancias = []
-pConDist = []
-
+#####MAIN#####
 for i in range(0, len(puntos)-1):
     graficarLinea(puntos[i], puntos[i+1], 1)
+    vias.append(Linea(puntos[i], puntos[i + 1]))
 
-for punto in puntos:
-    graficarPunto(punto, color='olive')
-
+graficarPunto(puntos, color='olive')
 graficarPunto(base, 100, color='red', marker='X')
 
-for i in range(0, 4):
-  x1 = puntos[i].x
-  y1 = puntos[i].y
+menor = base.distancia(puntos[0])
+puntoMenor = puntos[0]
+for i in range(1, len(puntos)):
+    dist = base.distancia(puntos[i])
+    if dist < menor:
+        menor = dist
+        puntoMenor = puntos[i]
 
-  x2 = puntos[i + 1].x
-  y2 = puntos[i + 1].y
-  
-  m = getM(x1, y1, x2, y2)
-  b = getB(x1, y1, m)
-  c = getC(base.x, base.y, m)
+for i in range(len(vias)):
+    dist = distanciaSegmentoPunto(base, vias[i])
+    if dist < menor:
+        tempPunto = getIntersectedPoint(base, vias[i])
+        tempX = [vias[i].p1.x, vias[i].p2.x]
+        tempY = [vias[i].p1.y, vias[i].p2.y]
+        tempX.sort(key=lambda x: x)
+        tempY.sort(key=lambda y: y)
+        if tempPunto.x >= tempX[0] and tempPunto.x <= tempX[1] and tempPunto.y >= tempY[0] and tempPunto.y <= tempY[1]:
+            menor = dist
+            puntoMenor = tempPunto
 
-  x=sym.Symbol('x')
-  y=sym.Symbol('y')
-  resp=sym.solve([y-(m*x)-b, y+(m*x) - c], dict=True)
-
-  if resp[0][x] < x1 or resp[0][x] < x2 or resp[0][y] < y1 or resp[0][y] < y2:
-    break
-  else:
-    nuevoPunto = Punto(resp[0][x], resp[0][y])
-    puntos.append(nuevoPunto)
-
-for punto in puntos:
-  #distancias.append(getDistance(punto.x, punto.y, base.x, base.y))
-  pConDist.append((punto, getDistance(punto.x, punto.y, base.x, base.y)))
-  
-pConDist.sort(key = lambda x: x[1])
-
-print(pConDist)
-cercanoPunto = pConDist[0][0]
-
-graficarLinea(base, cercanoPunto, 0)
-graficarPunto(cercanoPunto, 100, color='darkorange', marker='*')
+graficarLinea(base, puntoMenor, 0)
+graficarPunto(puntoMenor, 120, color='darkorange', marker='*')
 
 font1 = {'family':'serif','color':'olive','size':14}
 plt.title("Asalto en el Tren del Dinero\nRosita Aguirre, Lucia Castañeda & Eduardo González", fontdict=font1)
 plt.show()
-
-"""
-lx1 = 0
-ly1 = 1
-
-lx2 = 3
-ly2 = 4
-
-px = 3
-py = 2
-
-m = getM(lx1, ly1, lx2, ly2)
-b = getB(lx1, ly1, m)
-c = getC(px, py, m)
-
-print(f"Funcion 1: y = {m}x + {b}")
-print(f"Funcion 2: y = -{m}x + {c}")
-"""
